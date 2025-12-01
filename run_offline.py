@@ -35,14 +35,17 @@ def parse_args():
 def main():
     args = parse_args()
 
-    # Load image
     logging.info('Loading image...')
-    # Load RGB image
+    # Load Grayscale image, and convert to fake RGB
     pic = Image.open(args.rgb_path, 'r')
-    rgb = np.array(pic)
+    grayscale = np.array(pic)
+    print(f'GrayScale image : {grayscale.shape}, {grayscale.dtype}, {grayscale.max()}, {grayscale.min()}')
+    fake_rgb = np.expand_dims([grayscale, grayscale, grayscale], axis=2)
+    print(f'Fake RGB image : {fake_rgb.shape}, {fake_rgb.dtype}, {fake_rgb.max()}, {fake_rgb.min()}')
     # Load depth image
     depth_mm = np.load('test_img/M1_08_depth_refined.npy')  # shape (H, W)
     depth = np.expand_dims(depth_mm, axis=2)  # shape (H, W, 1)
+    print(f'Depth : {depth.shape}, {depth.dtype}, {depth.max()}, {depth.min()}')
 
     # Load Network
     logging.info('Loading model...')
@@ -54,7 +57,7 @@ def main():
 
     img_data = CameraData(include_depth=args.use_depth, include_rgb=args.use_rgb)
 
-    x, depth_img, rgb_img = img_data.get_data(rgb=rgb, depth=depth)
+    x, depth_img, rgb_img = img_data.get_data(rgb=fake_rgb, depth=depth)
 
     with torch.no_grad():
         xc = x.to(device)
