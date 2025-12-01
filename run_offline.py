@@ -11,33 +11,38 @@ from inference.post_process import post_process_output
 from utils.data.camera_data import CameraData
 from utils.visualisation.plot import plot_results, save_results
 
+# Configure logging level
 logging.basicConfig(level=logging.INFO)
 
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Evaluate network')
-    parser.add_argument('--network', type=str, help='Path to saved network to evaluate')
-    parser.add_argument('--rgb_path', type=str, default='cornell/08/pcd0845r.png', help='RGB Image path')
-    parser.add_argument('--depth_path', type=str, default='cornell/08/pcd0845d.tiff', help='Depth Image path')
+    parser.add_argument('--network', type=str, default='epoch_50_iou_094.pth',help='Path to saved network to evaluate')
+    parser.add_argument('--rgb_path', type=str, default='test_img/M1_08_intensity_image.png', help='RGB Image path')
+    parser.add_argument('--depth_path', type=str, default='test_img/M1_08_depth_refined.npy', help='Depth Image path')
     parser.add_argument('--use-depth', type=int, default=1, help='Use Depth image for evaluation (1/0)')
-    parser.add_argument('--use-rgb', type=int, default=1, help='Use RGB image for evaluation (1/0)')
+    parser.add_argument('--use-rgb', type=int, default=0, help='Use RGB image for evaluation (1/0)')  # 1
+    # Number of grasp candidates to visualize
     parser.add_argument('--n-grasps', type=int, default=1, help='Number of grasps to consider per image')
+    # Whether to save results instead of only plotting
     parser.add_argument('--save', type=int, default=0, help='Save the results')
+    # Force CPU mode even if GPU is available
     parser.add_argument('--cpu', dest='force_cpu', action='store_true', default=False, help='Force code to run in CPU mode')
 
     args = parser.parse_args()
     return args
 
-
-if __name__ == '__main__':
+def main():
     args = parse_args()
 
     # Load image
     logging.info('Loading image...')
+    # Load RGB image
     pic = Image.open(args.rgb_path, 'r')
     rgb = np.array(pic)
-    pic = Image.open(args.depth_path, 'r')
-    depth = np.expand_dims(np.array(pic), axis=2)
+    # Load depth image
+    depth_mm = np.load('test_img/M1_08_depth_refined.npy')  # shape (H, W)
+    depth = np.expand_dims(depth_mm, axis=2)  # shape (H, W, 1)
 
     # Load Network
     logging.info('Loading model...')
@@ -75,3 +80,7 @@ if __name__ == '__main__':
                          no_grasps=args.n_grasps,
                          grasp_width_img=width_img)
             fig.savefig('img_result.pdf')
+
+
+if __name__ == '__main__':
+    main()
