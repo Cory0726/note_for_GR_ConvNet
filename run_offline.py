@@ -1,6 +1,7 @@
 import argparse
 import logging
 
+import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 import torch.utils.data
@@ -17,8 +18,8 @@ logging.basicConfig(level=logging.INFO)
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Evaluate network')
-    parser.add_argument('--network', type=str, default='epoch_50_iou_094.pth',help='Path to saved network to evaluate')
-    parser.add_argument('--rgb_path', type=str, default='test_img/M1_08_intensity_image.png', help='RGB Image path')
+    parser.add_argument('--network', type=str, default='epoch_50_iou_0.94',help='Path to saved network to evaluate')
+    parser.add_argument('--rgb_path', type=str, default='test_img/M1_08_intensity_grayscale_img.png', help='RGB Image path')
     parser.add_argument('--depth_path', type=str, default='test_img/M1_08_depth_refined.npy', help='Depth Image path')
     parser.add_argument('--use-depth', type=int, default=1, help='Use Depth image for evaluation (1/0)')
     parser.add_argument('--use-rgb', type=int, default=0, help='Use RGB image for evaluation (1/0)')  # 1
@@ -40,7 +41,7 @@ def main():
     pic = Image.open(args.rgb_path, 'r')
     grayscale = np.array(pic)
     print(f'GrayScale image : {grayscale.shape}, {grayscale.dtype}, {grayscale.max()}, {grayscale.min()}')
-    fake_rgb = np.expand_dims([grayscale, grayscale, grayscale], axis=2)
+    fake_rgb = np.stack([grayscale, grayscale, grayscale], axis=2)
     print(f'Fake RGB image : {fake_rgb.shape}, {fake_rgb.dtype}, {fake_rgb.max()}, {fake_rgb.min()}')
     # Load depth image
     depth_mm = np.load('test_img/M1_08_depth_refined.npy')  # shape (H, W)
@@ -49,7 +50,7 @@ def main():
 
     # Load Network
     logging.info('Loading model...')
-    net = torch.load(args.network)
+    net = torch.load(args.network, weights_only=False)
     logging.info('Done')
 
     # Get the compute device

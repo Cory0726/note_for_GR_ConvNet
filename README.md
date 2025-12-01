@@ -19,6 +19,15 @@ pip3 install torch torchvision --index-url https://download.pytorch.org/whl/cu12
 # other
 pip install opencv-python, matplotlib, scikit-image, imageio, torchsummary, tensorboardX
 ```
+### Issue
+#### In PyTorch 2.6, we changed the default value of the `weights_only` argument in `torch.load` from `False` to `True`
+- 改`run_offline.py`裡的`torch.load`那一行
+```python
+# Origin :
+net = torch.load(args.network)
+# Change to :
+net = torch.load(args.network, weights_only=False)
+```
 
 ## Script
 ### run_offline.py
