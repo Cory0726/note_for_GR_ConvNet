@@ -113,7 +113,7 @@ def plot_grasp(
 
     if save:
         time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        fig.savefig('results/{}.png'.format(time))
+        fig.savefig('result_img/{}.png'.format(time))
 
 
 def save_results(rgb_img, grasp_q_img, grasp_angle_img, depth_img=None, no_grasps=1, grasp_width_img=None):
@@ -194,7 +194,7 @@ def save_results(rgb_img, grasp_q_img, grasp_angle_img, depth_img=None, no_grasp
     fig.canvas.draw()
     plt.close(fig)
 
-def plot_depth_with_grasp(fig, depth_img, grasp_q_img, grasp_angle_img, grasp_width_img=None, no_grasps=1):
+def plot_depth_with_grasp(depth_img, grasp_q_img, grasp_angle_img, grasp_width_img=None, no_grasps=1):
     """
     Show depth image with predicted grasp rectangles overlaid.
     """
@@ -202,6 +202,7 @@ def plot_depth_with_grasp(fig, depth_img, grasp_q_img, grasp_angle_img, grasp_wi
     gs = detect_grasps(grasp_q_img, grasp_angle_img, width_img=grasp_width_img, no_grasps=no_grasps)
 
     # 2. Create a new figure
+    fig = plt.figure(figsize=(10, 10))
     plt.ion()
     plt.clf()
 
@@ -213,8 +214,7 @@ def plot_depth_with_grasp(fig, depth_img, grasp_q_img, grasp_angle_img, grasp_wi
 
     # 4. Draw grasp rectangles
     for g in gs:
+        print(f'Grasp center: {g.center}, angle: {g.angle}, width: {g.width}')
         g.plot(ax)
 
-    plt.pause(10)
-    # fig.canvas.draw()
-
+    return fig

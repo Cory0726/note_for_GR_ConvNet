@@ -10,7 +10,7 @@ from PIL import Image
 from hardware.device import get_device
 from inference.post_process import post_process_output
 from utils.data.camera_data import CameraData
-from utils.visualisation.plot import plot_results, save_results, plot_depth_with_grasp
+from utils.visualisation.plot import plot_results, save_results, plot_depth_with_grasp, plot_grasp
 
 def vis_heatmap(img:np.ndarray):
     img = cv2.normalize(img, None, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX).astype(np.uint8)
@@ -27,7 +27,7 @@ def parse_args():
     return args
 
 def main(
-        input_depth_path='test_img/M1_08_predicted_depth.npy',
+        input_depth_path='test_img/M1_01_predicted_depth.npy',
         network_path="trained-models/jacquard-d-grconvnet3-drop0-ch32/epoch_50_iou_0.94"
 ):
     args = parse_args()
@@ -53,42 +53,18 @@ def main(
     with torch.no_grad():
         xc = x.to(device)
         pred = net.predict(xc)
-
-        q_img, ang_img, width_img = post_process_output(pred['pos'], pred['cos'], pred['sin'], pred['width'])
-        logging.info('Predict complete')
-        # cv2.imshow('depth', vis_heatmap(crop_depth_img))
-        # cv2.imshow('q_img', vis_heatmap(q_img))
-        # cv2.imshow('ang_img', vis_heatmap(ang_img))
-        # cv2.imshow('width_img', vis_heatmap(width_img))
-        # cv2.waitKey(0)
-        # cv2.destroyAllWindows()
-
-
-        fig = plt.figure(figsize=(10, 10))
-        plot_depth_with_grasp(fig, crop_depth_img, q_img, ang_img, width_img, no_grasps=1)
-        plt.show()
-
-
-
-        # if args.save:
-        #     save_results(
-        #         rgb_img=img_data.get_rgb(fake_rgb, False),
-        #         depth_img=np.squeeze(img_data.get_depth(depth)),
-        #         grasp_q_img=q_img,
-        #         grasp_angle_img=ang_img,
-        #         no_grasps=args.n_grasps,
-        #         grasp_width_img=width_img
-        #     )
-        # else:
-        #     fig = plt.figure(figsize=(10, 10))
-        #     plot_results(fig=fig,
-        #                  rgb_img=img_data.get_rgb(fake_rgb, False),
-        #                  grasp_q_img=q_img,
-        #                  grasp_angle_img=ang_img,
-        #                  no_grasps=args.n_grasps,
-        #                  grasp_width_img=width_img)
-        #     fig.savefig('img_result.pdf')
-
+    q_img, ang_img, width_img = post_process_output(pred['pos'], pred['cos'], pred['sin'], pred['width'])
+    logging.info('Predict complete')
+    # Display the result of the predict grasp
+    cv2.imshow('depth', vis_heatmap(crop_depth_img))
+    cv2.imshow('q_img', vis_heatmap(q_img))
+    cv2.imshow('ang_img', vis_heatmap(ang_img))
+    cv2.imshow('width_img', vis_heatmap(width_img))
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
+    # Plot the grasp rectangle on the depth image
+    fig = plot_depth_with_grasp(crop_depth_img, q_img, ang_img, width_img, no_grasps=1)
+    fig.savefig('grasp_result.pdf')
 
 if __name__ == '__main__':
     main()
