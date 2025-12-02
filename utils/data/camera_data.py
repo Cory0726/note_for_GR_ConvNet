@@ -31,10 +31,11 @@ class CameraData:
         else:
             return torch.from_numpy(s.astype(np.float32))
 
-    def get_depth(self, img):
-        depth_img = image.Image(img)
+    def get_data(self, depth):
+        depth_img = image.Image(depth)
         # Crop the image
         depth_img.crop(bottom_right=self.bottom_right, top_left=self.top_left)
+        crop_img = depth_img.img.squeeze()
         # Resize the image
         resized_img = cv2.resize(depth_img.img, (224, 224), interpolation=cv2.INTER_NEAREST)
         depth_img.img = np.expand_dims(resized_img, 2)
@@ -42,9 +43,6 @@ class CameraData:
         depth_img.normalise()
         # Change the order of the dimension
         depth_img.img = depth_img.img.transpose((2, 0, 1))
-        return depth_img.img
 
-    def get_data(self, depth=None):
-        depth_img = self.get_depth(img=depth)
-        x = self.numpy_to_torch(depth_img)
-        return x, depth_img
+        x = self.numpy_to_torch(depth_img.img)
+        return x, crop_img

@@ -10,7 +10,7 @@ from PIL import Image
 from hardware.device import get_device
 from inference.post_process import post_process_output
 from utils.data.camera_data import CameraData
-from utils.visualisation.plot import plot_results, save_results
+from utils.visualisation.plot import plot_results, save_results, plot_depth_with_grasp
 
 def vis_heatmap(img:np.ndarray):
     img = cv2.normalize(img, None, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX).astype(np.uint8)
@@ -27,8 +27,8 @@ def parse_args():
     return args
 
 def main(
-        input_depth_path='test_img/M1_08_depth_refined.npy',
-        network_path="trained-models/jacquard-d-grconvnet3-drop0-ch32/epoch_50_iou_0.94",
+        input_depth_path='test_img/M1_08_predicted_depth.npy',
+        network_path="trained-models/jacquard-d-grconvnet3-drop0-ch32/epoch_50_iou_0.94"
 ):
     args = parse_args()
 
@@ -38,7 +38,6 @@ def main(
     # Load depth image
     depth_mm = np.load(input_depth_path)  # shape (H, W)
     depth = np.expand_dims(depth_mm, axis=2)  # shape (H, W, 1)
-    print(f'Depth : {depth.shape}, {depth.dtype}, {depth.max()}, {depth.min()}')
     # Load pre-trained model
     logging.info('Loading model...')
     net = torch.load(network_path, weights_only=False)
@@ -48,10 +47,8 @@ def main(
     logging.info('Using device: {}'.format(device))
     # Pre-process the depth data to tensor for the model
     img_data = CameraData()
-    x, depth_img = img_data.get_data(depth=depth)
+    x, crop_depth_img = img_data.get_data(depth=depth)
     x = x.unsqueeze(0)  # Increase the dimension of batch
-    print(f'depth_img : {depth_img.shape}, {depth_img.dtype}, {depth_img.max()}, {depth_img.min()}')
-    print(f'x : {x.shape}, {x.dtype}, {x.max()}, {x.min()}')
     # Predict the grasp pose by GR-ConvNet model
     with torch.no_grad():
         xc = x.to(device)
@@ -59,12 +56,20 @@ def main(
 
         q_img, ang_img, width_img = post_process_output(pred['pos'], pred['cos'], pred['sin'], pred['width'])
         logging.info('Predict complete')
-        cv2.imshow('depth', vis_heatmap(depth_mm))
-        cv2.imshow('q_img', vis_heatmap(q_img))
-        cv2.imshow('ang_img', vis_heatmap(ang_img))
-        cv2.imshow('width_img', vis_heatmap(width_img))
-        cv2.waitKey(0)
-        cv2.destroyAllWindows()
+        # cv2.imshow('depth', vis_heatmap(crop_depth_img))
+        # cv2.imshow('q_img', vis_heatmap(q_img))
+        # cv2.imshow('ang_img', vis_heatmap(ang_img))
+        # cv2.imshow('width_img', vis_heatmap(width_img))
+        # cv2.waitKey(0)
+        # cv2.destroyAllWindows()
+
+
+        fig = plt.figure(figsize=(10, 10))
+        plot_depth_with_grasp(fig, crop_depth_img, q_img, ang_img, width_img, no_grasps=1)
+        plt.show()
+
+
+
         # if args.save:
         #     save_results(
         #         rgb_img=img_data.get_rgb(fake_rgb, False),

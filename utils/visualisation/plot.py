@@ -14,9 +14,9 @@ def plot_results(
         rgb_img,
         grasp_q_img,
         grasp_angle_img,
+        grasp_width_img=None,
         depth_img=None,
-        no_grasps=1,
-        grasp_width_img=None
+        no_grasps=1
 ):
     """
     Plot the output of a network
@@ -193,3 +193,28 @@ def save_results(rgb_img, grasp_q_img, grasp_angle_img, depth_img=None, no_grasp
 
     fig.canvas.draw()
     plt.close(fig)
+
+def plot_depth_with_grasp(fig, depth_img, grasp_q_img, grasp_angle_img, grasp_width_img=None, no_grasps=1):
+    """
+    Show depth image with predicted grasp rectangles overlaid.
+    """
+    # 1. Detect grasp candidates from network outputs
+    gs = detect_grasps(grasp_q_img, grasp_angle_img, width_img=grasp_width_img, no_grasps=no_grasps)
+
+    # 2. Create a new figure
+    plt.ion()
+    plt.clf()
+
+    # 3. Display the depth image
+    ax = fig.add_subplot(1, 1, 1)
+    ax.imshow(depth_img, cmap='gray')
+    ax.set_title("Depth + Grasp")
+    ax.axis('off')
+
+    # 4. Draw grasp rectangles
+    for g in gs:
+        g.plot(ax)
+
+    plt.pause(10)
+    # fig.canvas.draw()
+
