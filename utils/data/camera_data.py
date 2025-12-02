@@ -1,3 +1,4 @@
+import cv2
 import numpy as np
 import torch
 
@@ -8,7 +9,7 @@ class CameraData:
     """
     Dataset wrapper for the camera data.
     """
-    def __init__(self, width=640, height=480, output_size=224):
+    def __init__(self, width=640, height=480, output_size=480):
         """
         :param output_size: Image output size in pixels (square)
         :param include_depth: Whether depth image is included
@@ -32,9 +33,14 @@ class CameraData:
 
     def get_depth(self, img):
         depth_img = image.Image(img)
+        # Crop the image
         depth_img.crop(bottom_right=self.bottom_right, top_left=self.top_left)
+        # Resize the image
+        resized_img = cv2.resize(depth_img.img, (224, 224), interpolation=cv2.INTER_NEAREST)
+        depth_img.img = np.expand_dims(resized_img, 2)
+        # Normalise
         depth_img.normalise()
-        # depth_img.resize((self.output_size, self.output_size)
+        # Change the order of the dimension
         depth_img.img = depth_img.img.transpose((2, 0, 1))
         return depth_img.img
 
