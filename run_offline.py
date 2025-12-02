@@ -12,78 +12,72 @@ from inference.post_process import post_process_output
 from utils.data.camera_data import CameraData
 from utils.visualisation.plot import plot_results, save_results
 
-# Configure logging level
-logging.basicConfig(level=logging.INFO)
-
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Evaluate network')
-    parser.add_argument('--network', type=str, default='epoch_50_iou_0.94',help='Path to saved network to evaluate')
     parser.add_argument('--rgb_path', type=str, default='test_img/M1_08_intensity_grayscale_img.png', help='RGB Image path')
-    parser.add_argument('--depth_path', type=str, default='test_img/M1_08_depth_refined.npy', help='Depth Image path')
     parser.add_argument('--use-depth', type=int, default=1, help='Use Depth image for evaluation (1/0)')
-    parser.add_argument('--use-rgb', type=int, default=0, help='Use RGB image for evaluation (1/0)')  # 1
+    parser.add_argument('--use-rgb', type=int, default=1, help='Use RGB image for evaluation (1/0)')  # 1
     # Number of grasp candidates to visualize
     parser.add_argument('--n-grasps', type=int, default=1, help='Number of grasps to consider per image')
     # Whether to save results instead of only plotting
-    parser.add_argument('--save', type=int, default=0, help='Save the results')
+    parser.add_argument('--save', type=int, default=1, help='Save the results')
     # Force CPU mode even if GPU is available
     parser.add_argument('--cpu', dest='force_cpu', action='store_true', default=False, help='Force code to run in CPU mode')
 
     args = parser.parse_args()
     return args
 
-def main():
+def main(
+        input_depth_path='test_img/M1_08_depth_refined.npy',
+        network_path="trained-models/jacquard-d-grconvnet3-drop0-ch32/epoch_50_iou_0.94",
+):
     args = parse_args()
 
-    logging.info('Loading image...')
-    # Load Grayscale image, and convert to fake RGB
-    pic = Image.open(args.rgb_path, 'r')
-    grayscale = np.array(pic)
-    print(f'GrayScale image : {grayscale.shape}, {grayscale.dtype}, {grayscale.max()}, {grayscale.min()}')
-    fake_rgb = np.stack([grayscale, grayscale, grayscale], axis=2)
-    print(f'Fake RGB image : {fake_rgb.shape}, {fake_rgb.dtype}, {fake_rgb.max()}, {fake_rgb.min()}')
+    # Configure logging level
+    logging.basicConfig(level=logging.INFO)
+    logging.info('Loading depth...')
     # Load depth image
-    depth_mm = np.load('test_img/M1_08_depth_refined.npy')  # shape (H, W)
+    depth_mm = np.load(input_depth_path)  # shape (H, W)
     depth = np.expand_dims(depth_mm, axis=2)  # shape (H, W, 1)
     print(f'Depth : {depth.shape}, {depth.dtype}, {depth.max()}, {depth.min()}')
-
-    # Load Network
+    # Load pre-trained model
     logging.info('Loading model...')
-    net = torch.load(args.network, weights_only=False)
-    logging.info('Done')
-
+    net = torch.load(network_path, weights_only=False)
+    logging.info('Loading network complete')
     # Get the compute device
-    device = get_device(args.force_cpu)
-
-    img_data = CameraData(include_depth=args.use_depth, include_rgb=args.use_rgb)
-
-    x, depth_img, rgb_img = img_data.get_data(rgb=fake_rgb, depth=depth)
-
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    logging.info('Using device: {}'.format(device))
+    # Pre-process the depth data
+    img_data = CameraData()
+    x, depth_img = img_data.get_data(depth=depth)
+    print(f'x : {x.shape}, {x.dtype}, {x.max()}, {x.min()}')
+    print(f'depth_img : {depth_img.shape}, {depth_img.dtype}, {depth_img.max()}, {depth_img.min()}')
+    # Predict the grasp pose by GR-ConvNet model
     with torch.no_grad():
         xc = x.to(device)
         pred = net.predict(xc)
 
         q_img, ang_img, width_img = post_process_output(pred['pos'], pred['cos'], pred['sin'], pred['width'])
 
-        if args.save:
-            save_results(
-                rgb_img=img_data.get_rgb(rgb, False),
-                depth_img=np.squeeze(img_data.get_depth(depth)),
-                grasp_q_img=q_img,
-                grasp_angle_img=ang_img,
-                no_grasps=args.n_grasps,
-                grasp_width_img=width_img
-            )
-        else:
-            fig = plt.figure(figsize=(10, 10))
-            plot_results(fig=fig,
-                         rgb_img=img_data.get_rgb(rgb, False),
-                         grasp_q_img=q_img,
-                         grasp_angle_img=ang_img,
-                         no_grasps=args.n_grasps,
-                         grasp_width_img=width_img)
-            fig.savefig('img_result.pdf')
+        # if args.save:
+        #     save_results(
+        #         rgb_img=img_data.get_rgb(fake_rgb, False),
+        #         depth_img=np.squeeze(img_data.get_depth(depth)),
+        #         grasp_q_img=q_img,
+        #         grasp_angle_img=ang_img,
+        #         no_grasps=args.n_grasps,
+        #         grasp_width_img=width_img
+        #     )
+        # else:
+        #     fig = plt.figure(figsize=(10, 10))
+        #     plot_results(fig=fig,
+        #                  rgb_img=img_data.get_rgb(fake_rgb, False),
+        #                  grasp_q_img=q_img,
+        #                  grasp_angle_img=ang_img,
+        #                  no_grasps=args.n_grasps,
+        #                  grasp_width_img=width_img)
+        #     fig.savefig('img_result.pdf')
 
 
 if __name__ == '__main__':
